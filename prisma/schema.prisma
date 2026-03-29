@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+enum ExpenseStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum RuleType {
+  SEQUENTIAL
+  PERCENTAGE
+  SPECIFIC_APPROVER
+  HYBRID
+}
+
+enum ApprovalActionType {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  country   String
+  currency  String
+  createdAt DateTime @default(now())
+
+  users         User[]
+  expenses      Expense[]
+  approvalRules ApprovalRule[]
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  passwordHash String
+  role      Role     @default(EMPLOYEE)
+  companyId String
+  managerId String?
+  isManagerApprover Boolean @default(false)
+  resetPasswordToken String?
+  resetPasswordExpiry DateTime?
+  createdAt DateTime @default(now())
+
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  manager         User?            @relation("ManagerEmployees", fields: [managerId], references: [id], onDelete: SetNull)
+  subordinates    User[]           @relation("ManagerEmployees")
+  
+  expenses        Expense[]        @relation("EmployeeExpenses")
+  
+  approvalSteps   ApprovalStep[]
+  approvalActions ApprovalAction[]
+  notifications   Notification[]
+  
+  specificApprovalRules ApprovalRule[] @relation("SpecificApproverRules")
+}
+
+model Expense {
+  id        String   @id @default(cuid())
+  employeeId String
+  companyId String
+  description String
+  category   String
+  date       DateTime
+  remarks    String?
+  submittedAmount Decimal
+  submittedCurrency String
+  convertedAmount Decimal
+  conversionRate Decimal
+  status    ExpenseStatus @default(PENDING)
+  currentApprovalStep Int @default(0)
+  receiptId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employee   User         @relation("EmployeeExpenses", fields: [employeeId], references: [id], onDelete: Cascade)
+  company    Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  approvalActions ApprovalAction[]
+}
+
+model Receipt {
+  id        String   @id @default(cuid())
+  expenseId String?  @unique
+  fileData  Bytes
+  mimeType  String
+  createdAt DateTime @default(now())
+}
+
+model ApprovalRule {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  description String?
+  isManagerApprover Boolean @default(false)
+  approveThreshold Decimal?
+  ruleType    RuleType @default(SEQUENTIAL)
+  percentageRequired Int?
+  specificApproverId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company         Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  specificApprover User?         @relation("SpecificApproverRules", fields: [specificApproverId], references: [id], onDelete: SetNull)
+  steps           ApprovalStep[]
+}
+
+model ApprovalStep {
+  id        String @id @default(cuid())
+  ruleId    String
+  approverId String
+  stepOrder Int
+  isRequired Boolean @default(true)
+
+  rule     ApprovalRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  approver User         @relation(fields: [approverId], references: [id], onDelete: Cascade)
+}
+
+model ApprovalAction {
+  id        String   @id @default(cuid())
+  expenseId String
+  approverId String
+  stepOrder Int
+  action    ApprovalActionType @default(PENDING)
+  comment   String?
+  actedAt   DateTime?
+  createdAt DateTime @default(now())
+
+  expense  Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  approver User    @relation(fields: [approverId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  message   String
+  isRead    Boolean  @default(false)
+  expenseId String?
+  createdAt DateTime @default(now())
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Country {
+  id           String @id @default(cuid())
+  name         String
+  currencyCode String
+  currencySymbol String?
+}
