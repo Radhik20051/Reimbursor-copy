@@ -31,20 +31,30 @@ export default function SignupPage() {
   const [pageLoading, setPageLoading] = useState(true);
 
   useEffect(() => {
-    const fetchCountries = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('/api/countries');
-        const data = await response.json();
-        if (Array.isArray(data)) {
-          setCountries(data);
+        const [countriesRes, defaultCountryRes] = await Promise.all([
+          fetch('/api/countries'),
+          fetch('/api/countries/default'),
+        ]);
+        const countriesData = await countriesRes.json();
+        const defaultCountry = await defaultCountryRes.json();
+
+        if (Array.isArray(countriesData)) {
+          setCountries(countriesData);
+
+          if (defaultCountry) {
+            setSelectedCountry(defaultCountry.name);
+            setSelectedCurrency(defaultCountry.currency);
+          }
         }
       } catch (err) {
-        console.error('Failed to fetch countries:', err);
+        console.error('Failed to fetch data:', err);
       } finally {
         setPageLoading(false);
       }
     };
-    fetchCountries();
+    fetchData();
   }, []);
 
   const handleCountryChange = (countryName: string) => {
@@ -221,7 +231,12 @@ export default function SignupPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="country">Country</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="country">Country</Label>
+                    {selectedCountry && (
+                      <span className="text-xs text-muted-foreground">Auto-detected</span>
+                    )}
+                  </div>
                   <Select value={selectedCountry} onValueChange={handleCountryChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a country" />
@@ -239,7 +254,7 @@ export default function SignupPage() {
                 {selectedCurrency && (
                   <div className="bg-blue-50 border border-blue-200 px-4 py-3 rounded">
                     <p className="text-sm text-blue-800">
-                      Currency: <strong>{selectedCurrency}</strong>
+                      Currency: <strong>{selectedCurrency}</strong> (set from {selectedCountry})
                     </p>
                   </div>
                 )}
