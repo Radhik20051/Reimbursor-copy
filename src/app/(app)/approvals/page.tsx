@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { ApprovalList } from "@/components/ApprovalList"
+import { CheckCircle } from "lucide-react"
 
 export default async function ApprovalsPage() {
   const session = await getServerSession(authOptions)
@@ -24,6 +25,7 @@ export default async function ApprovalsPage() {
       expense: {
         include: {
           employee: { select: { id: true, name: true, email: true } },
+          receipt: { select: { id: true, url: true } },
         },
       },
     },
@@ -36,12 +38,20 @@ export default async function ApprovalsPage() {
   })
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Pending Approvals</h1>
-        <p className="text-muted-foreground">
-          Review and approve expense requests from your team
-        </p>
+    <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Pending Approvals</h1>
+          <p className="text-muted-foreground mt-1">
+            Review and approve expense requests from your team
+          </p>
+        </div>
+        {pendingApprovals.length > 0 && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            {pendingApprovals.length} pending
+          </div>
+        )}
       </div>
 
       <ApprovalList

@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { ExpenseAmountCell } from "@/components/ExpenseAmountCell"
+import { CheckCircle, XCircle, Clock, User, Calendar, Tag, FileText } from "lucide-react"
 
 interface ApprovalAction {
   id: string
@@ -39,6 +40,11 @@ export function ApprovalList({ approvals, companyCurrency, viewerRole }: Approva
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null)
   const [comment, setComment] = useState("")
   const [loading, setLoading] = useState(false)
+  const [filter, setFilter] = useState<"pending" | "all">("pending")
+
+  const filteredApprovals = filter === "pending" 
+    ? approvals.filter(a => a.status === "PENDING_APPROVAL" || a.status === "PENDING")
+    : approvals
 
   const handleApprove = async (expenseId: string) => {
     setLoading(true)
@@ -78,121 +84,212 @@ export function ApprovalList({ approvals, companyCurrency, viewerRole }: Approva
     }
   }
 
-  if (approvals.length === 0) {
+  if (filteredApprovals.length === 0) {
     return (
       <Card>
-        <CardContent className="py-8">
-          <p className="text-center text-muted-foreground">No pending approvals</p>
+        <CardContent className="py-12">
+          <div className="text-center">
+            <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">All caught up!</h3>
+            <p className="text-muted-foreground">No pending approvals at the moment</p>
+          </div>
         </CardContent>
       </Card>
     )
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Pending Approvals</h2>
-        {approvals.map((expense) => (
-          <Card
-            key={expense.id}
-            className={`cursor-pointer hover:bg-accent/50 transition-colors ${
-              selectedExpense?.id === expense.id ? "ring-2 ring-primary" : ""
-            }`}
-            onClick={() => setSelectedExpense(expense)}
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold flex items-center gap-2">
+          <Clock className="h-5 w-5 text-yellow-600" />
+          Pending Approvals ({filteredApprovals.length})
+        </h2>
+        <div className="flex gap-2">
+          <Button 
+            variant={filter === "pending" ? "default" : "outline"} 
+            size="sm"
+            onClick={() => setFilter("pending")}
           >
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">{expense.description}</CardTitle>
-                <Badge variant="warning">{expense.status}</Badge>
-              </div>
-              <CardDescription>
-                Submitted by {expense.employee.name} on{" "}
-                {new Date(expense.date).toLocaleDateString()}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ExpenseAmountCell
-                convertedAmount={expense.convertedAmount}
-                companyCurrency={companyCurrency}
-                submittedAmount={expense.submittedAmount}
-                submittedCurrency={expense.submittedCurrency}
-                viewerRole={viewerRole}
-              />
-            </CardContent>
-          </Card>
-        ))}
+            Pending
+          </Button>
+          <Button 
+            variant={filter === "all" ? "default" : "outline"} 
+            size="sm"
+            onClick={() => setFilter("all")}
+          >
+            All
+          </Button>
+        </div>
       </div>
 
-      {selectedExpense && (
-        <Card className="sticky top-4 h-fit">
-          <CardHeader>
-            <CardTitle>Review Expense</CardTitle>
-            <CardDescription>{selectedExpense.description}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">Employee</p>
-                <p className="font-medium">{selectedExpense.employee.name}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Category</p>
-                <p className="font-medium">{selectedExpense.category}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Date</p>
-                <p className="font-medium">
-                  {new Date(selectedExpense.date).toLocaleDateString()}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Status</p>
-                <p className="font-medium">{selectedExpense.status}</p>
-              </div>
-            </div>
+      <div className="grid gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-3 space-y-4">
+          {filteredApprovals.map((expense) => (
+            <Card
+              key={expense.id}
+              className={`cursor-pointer transition-all hover:shadow-md ${
+                selectedExpense?.id === expense.id 
+                  ? "ring-2 ring-primary shadow-md" 
+                  : "hover:border-primary/50"
+              }`}
+              onClick={() => setSelectedExpense(expense)}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-base">{expense.description}</CardTitle>
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        {expense.employee.name}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(expense.date).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                  <Badge variant="warning">Pending</Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Tag className="h-4 w-4 text-muted-foreground" />
+                    <span className="bg-muted px-2 py-1 rounded text-xs font-medium">
+                      {expense.category}
+                    </span>
+                  </div>
+                  <ExpenseAmountCell
+                    convertedAmount={expense.convertedAmount}
+                    companyCurrency={companyCurrency}
+                    submittedAmount={expense.submittedAmount}
+                    submittedCurrency={expense.submittedCurrency}
+                    viewerRole={viewerRole}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-            <div>
-              <p className="text-muted-foreground mb-2">Amount</p>
-              <ExpenseAmountCell
-                convertedAmount={selectedExpense.convertedAmount}
-                companyCurrency={companyCurrency}
-                submittedAmount={selectedExpense.submittedAmount}
-                submittedCurrency={selectedExpense.submittedCurrency}
-                viewerRole={viewerRole}
-              />
-            </div>
+        <div className="lg:col-span-2">
+          {selectedExpense ? (
+            <Card className="sticky top-4 shadow-lg">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-muted-foreground" />
+                  <CardTitle className="text-lg">Review Expense</CardTitle>
+                </div>
+                <CardDescription>{selectedExpense.description}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Employee</p>
+                    <p className="font-medium flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      {selectedExpense.employee.name}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Category</p>
+                    <p className="font-medium flex items-center gap-1">
+                      <Tag className="h-3 w-3" />
+                      {selectedExpense.category}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Date</p>
+                    <p className="font-medium flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {new Date(selectedExpense.date).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Status</p>
+                    <Badge variant="warning">Pending</Badge>
+                  </div>
+                </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Comment (optional)</label>
-              <Textarea
-                placeholder="Add a comment..."
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                rows={3}
-              />
-            </div>
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Amount</p>
+                  <ExpenseAmountCell
+                    convertedAmount={selectedExpense.convertedAmount}
+                    companyCurrency={companyCurrency}
+                    submittedAmount={selectedExpense.submittedAmount}
+                    submittedCurrency={selectedExpense.submittedCurrency}
+                    viewerRole={viewerRole}
+                  />
+                </div>
 
-            <div className="flex gap-4">
-              <Button
-                variant="success"
-                className="flex-1"
-                onClick={() => handleApprove(selectedExpense.id)}
-                disabled={loading}
-              >
-                {loading ? "Processing..." : "Approve"}
-              </Button>
-              <Button
-                variant="destructive"
-                className="flex-1"
-                onClick={() => handleReject(selectedExpense.id)}
-                disabled={loading}
-              >
-                {loading ? "Processing..." : "Reject"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Comment (optional)</label>
+                  <Textarea
+                    placeholder="Add a comment for the employee..."
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    rows={3}
+                    className="resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    variant="success"
+                    className="gap-2"
+                    onClick={() => handleApprove(selectedExpense.id)}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      "Processing..."
+                    ) : (
+                      <>
+                        <CheckCircle className="h-4 w-4" />
+                        Approve
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="gap-2"
+                    onClick={() => handleReject(selectedExpense.id)}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      "Processing..."
+                    ) : (
+                      <>
+                        <XCircle className="h-4 w-4" />
+                        Reject
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => {
+                    setSelectedExpense(null)
+                    setComment("")
+                  }}
+                >
+                  Cancel
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="h-full min-h-[400px] flex items-center justify-center">
+              <CardContent className="text-center">
+                <FileText className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+                <p className="text-muted-foreground">Select an expense to review</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

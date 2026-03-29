@@ -1,11 +1,25 @@
 import { NextResponse } from "next/server"
 import { hash } from "bcryptjs"
 import { prisma } from "@/lib/prisma"
+import { rateLimit, getRateLimitIdentifier } from "@/lib/rate-limit"
 
 export async function POST(request: Request) {
   try {
+    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip")
     const body = await request.json()
-    const { name, email, password, companyName, companyCurrency } = body
+    const { email } = body
+
+    const identifier = getRateLimitIdentifier(ip, email)
+    const { success, resetIn } = rateLimit(identifier)
+
+    if (!success) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later.", retryAfter: Math.ceil(resetIn / 1000) },
+        { status: 429 }
+      )
+    }
+
+    const { name, password, companyName, companyCurrency } = body
 
     if (!name || !email || !password || !companyName) {
       return NextResponse.json(
@@ -14,7 +28,22 @@ export async function POST(request: Request) {
       )
     }
 
-    const existingUser = await prisma.user.findUnique({
+    if (password.length < 8) {
+      return NextResponse.json(
+        { error: "Password must be at least 8 characters" },
+        { status: 400 }
+      )
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: "Invalid email format" },
+        { status: 400 }
+      )
+    }
+
+    const existingUser = await prisma.user.findFirst({
       where: { email },
     })
 

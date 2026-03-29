@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Table,
@@ -68,7 +69,9 @@ export function AdminExpenseTable({ expenses, companyCurrency, employees }: Admi
     const variants: Record<string, "default" | "warning" | "success" | "destructive" | "gray"> = {
       DRAFT: "gray",
       PENDING: "warning",
+      PENDING_APPROVAL: "warning",
       APPROVED: "success",
+      AUTO_APPROVED: "success",
       REJECTED: "destructive",
     }
 
@@ -112,7 +115,8 @@ export function AdminExpenseTable({ expenses, companyCurrency, employees }: Admi
               <SelectContent>
                 <SelectItem value="ALL">All Statuses</SelectItem>
                 <SelectItem value="DRAFT">Draft</SelectItem>
-                <SelectItem value="PENDING">Pending</SelectItem>
+                <SelectItem value="PENDING_APPROVAL">Pending Approval</SelectItem>
+                <SelectItem value="AUTO_APPROVED">Auto Approved</SelectItem>
                 <SelectItem value="APPROVED">Approved</SelectItem>
                 <SelectItem value="REJECTED">Rejected</SelectItem>
               </SelectContent>
@@ -132,19 +136,25 @@ export function AdminExpenseTable({ expenses, companyCurrency, employees }: Admi
               </SelectContent>
             </Select>
 
-            <Input
-              type="date"
-              placeholder="From"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-            />
+            <div className="space-y-1">
+              <Label htmlFor="dateFrom" className="text-xs">From Date</Label>
+              <Input
+                id="dateFrom"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+            </div>
 
-            <Input
-              type="date"
-              placeholder="To"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-            />
+            <div className="space-y-1">
+              <Label htmlFor="dateTo" className="text-xs">To Date</Label>
+              <Input
+                id="dateTo"
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+            </div>
           </div>
 
           <Table>

@@ -3,6 +3,12 @@ import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/prisma"
 import { authOptions } from "@/lib/auth"
 
+const VALID_ACTIONS = ["APPROVED", "REJECTED"]
+
+function sanitizeString(str: string): string {
+  return str.trim().slice(0, 500)
+}
+
 export async function GET() {
   const session = await getServerSession(authOptions)
 
@@ -48,8 +54,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
+  if (session.user.role !== "MANAGER" && session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
   const body = await request.json()
   const { expenseId, action, comment } = body
+
+  if (!expenseId || typeof expenseId !== "string") {
+    return NextResponse.json({ error: "Expense ID is required" }, { status: 400 })
+  }
+
+  if (!action || !VALID_ACTIONS.includes(action)) {
+    return NextResponse.json(
+      { error: `Invalid action. Must be one of: ${VALID_ACTIONS.join(", ")}` },
+      { status: 400 }
+    )
+  }
+
+  if (comment !== undefined && (typeof comment !== "string" || comment.length > 500)) {
+    return NextResponse.json(
+      { error: "Comment must be a string with maximum 500 characters" },
+      { status: 400 }
+    )
+  }
 
   const approvalAction = await prisma.approvalAction.findFirst({
     where: {
@@ -72,12 +100,16 @@ export async function POST(request: Request) {
       where: { id: approvalAction.id },
       data: {
         action,
-        comment,
+        comment: comment ? sanitizeString(comment) : null,
         actedAt: new Date(),
       },
     })
 
     const expense = approvalAction.expense
+
+    if (expense.companyId !== session.user.companyId) {
+      throw new Error("Forbidden")
+    }
 
     if (action === "APPROVED") {
       const allApproved = await tx.approvalAction.count({

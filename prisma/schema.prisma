@@ -21,12 +21,15 @@ model Company {
 
 model User {
   id        String   @id @default(cuid())
-  email     String   @unique
+  email     String
   name      String
   password  String
   role      Role     @default(EMPLOYEE)
   companyId String
   company   Company  @relation(fields: [companyId], references: [id])
+  managerId String?
+  manager   User?    @relation("ManagerEmployees", fields: [managerId], references: [id])
+  employees User[]   @relation("ManagerEmployees")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -48,7 +51,7 @@ enum Role {
 model Expense {
   id                  String            @id @default(cuid())
   description         String
-  category           ExpenseCategory
+  category            ExpenseCategory
   date                DateTime
   submittedAmount     Decimal           @db.Decimal(10, 2)
   submittedCurrency   String
@@ -86,28 +89,42 @@ enum ExpenseCategory {
 
 enum ExpenseStatus {
   DRAFT
+  PENDING_APPROVAL
   PENDING
   APPROVED
+  AUTO_APPROVED
   REJECTED
 }
 
 model ApprovalRule {
-  id              String   @id @default(cuid())
+  id              String          @id @default(cuid())
   companyId       String
-  company         Company  @relation(fields: [companyId], references: [id])
+  company         Company         @relation(fields: [companyId], references: [id])
   name            String
   description     String?
-  minAmount       Decimal  @db.Decimal(10, 2)
-  maxAmount       Decimal? @db.Decimal(10, 2)
+  minAmount       Decimal         @db.Decimal(10, 2)
+  maxAmount       Decimal?        @db.Decimal(10, 2)
   stepOrder       Int
-  approverRole    Role
+  ruleType        RuleType       @default(SEQUENTIAL)
+  requiredApprovers String?       @default("1")
+  isManagerApproval Boolean       @default(false)
+  approverRole    Role?
   approverId      String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  isAutoApproved  Boolean         @default(false)
+  autoApproveRole Role?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   approvalActions ApprovalAction[]
 
   @@unique([companyId, stepOrder])
+}
+
+enum RuleType {
+  SEQUENTIAL
+  PERCENTAGE
+  SPECIFIC
+  HYBRID
 }
 
 model ApprovalAction {
@@ -122,8 +139,8 @@ model ApprovalAction {
   stepOrder   Int
   comment     String?
   actedAt     DateTime?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
   @@unique([expenseId, stepOrder])
 }
@@ -135,14 +152,16 @@ enum ActionStatus {
 }
 
 model Receipt {
-  id        String   @id @default(cuid())
-  expenseId String   @unique
-  expense   Expense  @relation(fields: [expenseId], references: [id])
-  url       String
-  filename  String
-  mimeType  String?
-  size      Int?
-  createdAt DateTime @default(now())
+  id            String   @id @default(cuid())
+  expenseId     String   @unique
+  expense       Expense  @relation(fields: [expenseId], references: [id])
+  url           String
+  filename      String
+  mimeType      String?
+  size          Int?
+  ocrData       Json?
+  ocrProcessed  Boolean  @default(false)
+  createdAt     DateTime @default(now())
 }
 
 model Notification {

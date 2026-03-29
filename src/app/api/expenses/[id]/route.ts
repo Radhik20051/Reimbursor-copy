@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/prisma"
 import { authOptions } from "@/lib/auth"
 
+const VALID_STATUSES = ["DRAFT", "PENDING", "APPROVED", "REJECTED"]
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
@@ -30,6 +32,19 @@ export async function GET(
     return NextResponse.json({ error: "Expense not found" }, { status: 404 })
   }
 
+  if (expense.companyId !== session.user.companyId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
+  const canView =
+    expense.employeeId === session.user.id ||
+    session.user.role === "ADMIN" ||
+    session.user.role === "MANAGER"
+
+  if (!canView) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
   return NextResponse.json(expense)
 }
 
@@ -46,12 +61,32 @@ export async function PATCH(
   const body = await request.json()
   const { status } = body
 
+  if (!status || !VALID_STATUSES.includes(status)) {
+    return NextResponse.json(
+      { error: "Invalid status. Must be one of: DRAFT, PENDING, APPROVED, REJECTED" },
+      { status: 400 }
+    )
+  }
+
   const expense = await prisma.expense.findUnique({
     where: { id: params.id },
   })
 
   if (!expense) {
     return NextResponse.json({ error: "Expense not found" }, { status: 404 })
+  }
+
+  if (expense.companyId !== session.user.companyId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
+  const canModify =
+    expense.employeeId === session.user.id ||
+    session.user.role === "ADMIN" ||
+    session.user.role === "MANAGER"
+
+  if (!canModify) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   const updated = await prisma.expense.update({
@@ -78,6 +113,10 @@ export async function DELETE(
 
   if (!expense) {
     return NextResponse.json({ error: "Expense not found" }, { status: 404 })
+  }
+
+  if (expense.companyId !== session.user.companyId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   if (expense.employeeId !== session.user.id && session.user.role !== "ADMIN") {

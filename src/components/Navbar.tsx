@@ -51,6 +51,8 @@ export function Navbar() {
   if (session.user.role === "ADMIN") {
     navLinks.push({ href: "/admin/expenses", label: "All Expenses" })
     navLinks.push({ href: "/admin/users", label: "Users" })
+    navLinks.push({ href: "/admin/team", label: "Team" })
+    navLinks.push({ href: "/admin/approval-rules", label: "Approval Rules" })
   }
 
   return (
@@ -66,10 +68,10 @@ export function Navbar() {
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+                  "px-4 py-2 text-[14px] font-medium transition-colors border-b-[3px]",
                   pathname === link.href
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-accent/50"
                 )}
               >
                 {link.label}

@@ -1,5 +1,7 @@
 import { hash } from "bcryptjs"
-import { prisma } from "@/lib/prisma"
+import { PrismaClient } from "@prisma/client"
+
+const prisma = new PrismaClient()
 
 async function main() {
   let company = await prisma.company.findFirst()
@@ -17,40 +19,54 @@ async function main() {
   const hashedPasswordEmployee = await hash("123456", 12)
   const hashedPasswordAdmin = await hash("admin123", 12)
 
-  const employee = await prisma.user.upsert({
-    where: { email: "spranav0812@gmail.com" },
-    update: {
-      password: hashedPasswordEmployee,
-      role: "EMPLOYEE",
-      name: "Spranav",
-      companyId: company.id,
-    },
-    create: {
-      email: "spranav0812@gmail.com",
-      password: hashedPasswordEmployee,
-      role: "EMPLOYEE",
-      name: "Spranav",
-      companyId: company.id,
-    },
+  const existingEmployee = await prisma.user.findFirst({
+    where: { email: "spranav0812@gmail.com", companyId: company.id },
   })
+
+  const employee = existingEmployee
+    ? await prisma.user.update({
+        where: { id: existingEmployee.id },
+        data: {
+          password: hashedPasswordEmployee,
+          role: "EMPLOYEE",
+          name: "Spranav",
+        },
+      })
+    : await prisma.user.create({
+        data: {
+          email: "spranav0812@gmail.com",
+          password: hashedPasswordEmployee,
+          role: "EMPLOYEE",
+          name: "Spranav",
+          companyId: company.id,
+        },
+      })
+
   console.log(`Employee: ${employee.email} (${employee.role})`)
 
-  const admin = await prisma.user.upsert({
-    where: { email: "admin@example.com" },
-    update: {
-      password: hashedPasswordAdmin,
-      role: "ADMIN",
-      name: "Admin User",
-      companyId: company.id,
-    },
-    create: {
-      email: "admin@example.com",
-      password: hashedPasswordAdmin,
-      role: "ADMIN",
-      name: "Admin User",
-      companyId: company.id,
-    },
+  const existingAdmin = await prisma.user.findFirst({
+    where: { email: "admin@example.com", companyId: company.id },
   })
+
+  const admin = existingAdmin
+    ? await prisma.user.update({
+        where: { id: existingAdmin.id },
+        data: {
+          password: hashedPasswordAdmin,
+          role: "ADMIN",
+          name: "Admin User",
+        },
+      })
+    : await prisma.user.create({
+        data: {
+          email: "admin@example.com",
+          password: hashedPasswordAdmin,
+          role: "ADMIN",
+          name: "Admin User",
+          companyId: company.id,
+        },
+      })
+
   console.log(`Admin: ${admin.email} (${admin.role})`)
 }
 
